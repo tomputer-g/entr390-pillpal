@@ -20,8 +20,11 @@ BLUE = (0, 0, 255)
 PURPLE = (180, 0, 255)
 OFF = (0, 0, 0)
 
+### Globals
+requests = None
+
 ### Initializations
-touch = touchio.TouchIn(board.A0) #TODO ??
+touch = touchio.TouchIn(board.A3)
 pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, brightness=0.3, auto_write=False)
 
 ### Helper funcs
@@ -29,22 +32,71 @@ def led(color):
     pixel.fill(color)
     pixel.show()
 
-### Booting up
-led(YELLOW)
+def onPress():
+    led(YELLOW)
+    ret = db_post(secrets["api-post"] + "/default")
+    print("Press:",ret.text)
+    led(GREEN)
+    time.sleep(0.2)
+    led(OFF)
 
-# Connect to wifi
-wifi.radio.connect(secrets["ssid"], secrets["password"])
-pool = socketpool.SocketPool(wifi.radio)
-requests = adafruit_requests.Session(pool, ssl.create_default_context())
+def watchdog_post():
+    led(YELLOW)
+    ret = db_post(secrets["api-post"] + "/default/1") #???
+    print("Watchdog:",ret.text)
+    led(RED)
+    time.sleep(0.2)
+    led(OFF)    
+    
+def db_post(url): #Test OK
+    response = None
+    while not response:
+        try:
+            response = requests.post(url)
+            failure_count = 0
+        except AssertionError as error:
+            print("Request failed, retrying...\n", error)
+            failure_count += 1
+            if failure_count >= 5:
+                raise AssertionError(
+                    "Failed to resolve hostname, \
+                                      please check your router's DNS configuration."
+                ) from error
+            continue
+    return response
 
-### Waiting for press
-led(OFF)
+def wifi_init():
+    # Connect to wifi
+    global requests
+    wifi.radio.connect(secrets["ssid"], secrets["password"])
+    pool = socketpool.SocketPool(wifi.radio)
+    requests = adafruit_requests.Session(pool, ssl.create_default_context())
+    
+def main():
+    debounce = False
+    prev_time = time.monotonic()
+    ### Booting up
+    led(BLUE)
 
+    wifi_init()
 
-'''
-Logic for demo:
-Set next due time from database.
-If pressed: blink and move database time.
-If time expires: blink red, log to database.
-Repeat.
-'''
+    ### Waiting for press
+    led(OFF)
+
+    while True:
+        # Only trigger onPress on a rising edge
+        if touch.value:
+            if not debounce:
+                debounce = True
+                onPress()
+        else:
+            debounce = False
+            
+        if time.monotonic() - prev_time >= 60.0:
+            prev_time = time.monotonic()
+            watchdog_post()
+        
+        time.sleep(0.2)
+        
+if __name__ == "__main__":
+    main()
