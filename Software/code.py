@@ -8,6 +8,8 @@ from time import mktime
 import time, board, touchio
 # Neopixel
 import neopixel
+# Stuff
+import math
 # Secrets (secrets.py)
 try:
     from secrets import secrets
@@ -71,7 +73,11 @@ def db_post(url): #Test OK
 
 def db_post(url):
     response = None
-    json_data = {"created_at": str(datetime.fromtimestamp(mktime(ntp.datetime)))}
+    timestamp_dat = datetime.fromtimestamp(mktime(ntp.datetime))
+    
+    print(timestamp_dat)
+    print(60000 * (int(int(timestamp_dat) / 60000)))
+    json_data = {"created_at": str(timestamp_dat)}
     while not response:
         try:
             response = requests.post(url, data=json_data)
@@ -112,7 +118,9 @@ def main():
         if touch.value:
             if not debounce:
                 debounce = True
-                onPress()
+                #onPress()
+                
+                
         else:
             debounce = False
             
@@ -120,7 +128,14 @@ def main():
         #    prev_time = time.monotonic()
         #    watchdog_post()
         
-        time.sleep(0.2)
+        #time.sleep(0.2)
+        time.sleep(1)
+        curr = datetime(ntp.datetime.tm_year, ntp.datetime.tm_mon, ntp.datetime.tm_mday, ntp.datetime.tm_hour, ntp.datetime.tm_min)
+        print(str(ntp.datetime), str(curr))
+        
+        
+        #print(str(mktime(ntp.datetime)))
+        #print(1 * (int(int(mktime(ntp.datetime)) / 1)))
         
 if __name__ == "__main__":
     main()
