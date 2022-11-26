@@ -1,5 +1,9 @@
 # Wireless
 import ssl, wifi, socketpool, adafruit_requests
+# Time
+import adafruit_ntp
+from adafruit_datetime import datetime
+from time import mktime
 # Capacitive Touch
 import time, board, touchio
 # Neopixel
@@ -22,7 +26,7 @@ OFF = (0, 0, 0)
 
 ### Globals
 requests = None
-
+ntp = None
 ### Initializations
 touch = touchio.TouchIn(board.A3)
 pixel = neopixel.NeoPixel(board.NEOPIXEL, 1, brightness=0.3, auto_write=False)
@@ -65,12 +69,32 @@ def db_post(url): #Test OK
             continue
     return response
 
+def db_post(url):
+    response = None
+    json_data = {"created_at": str(datetime.fromtimestamp(mktime(ntp.datetime)))}
+    while not response:
+        try:
+            response = requests.post(url, data=json_data)
+            failure_count = 0
+        except AssertionError as error:
+            print("Request failed, retrying...\n", error)
+            failure_count += 1
+            if failure_count >= 5:
+                raise AssertionError(
+                    "Failed to resolve hostname, \
+                                      please check your router's DNS configuration."
+                ) from error
+            continue
+    return response
+    
 def wifi_init():
     # Connect to wifi
     global requests
+    global ntp
     wifi.radio.connect(secrets["ssid"], secrets["password"])
     pool = socketpool.SocketPool(wifi.radio)
     requests = adafruit_requests.Session(pool, ssl.create_default_context())
+    ntp = adafruit_ntp.NTP(pool, tz_offset=-5) #EST + Daylight savings
     
 def main():
     debounce = False
@@ -92,9 +116,9 @@ def main():
         else:
             debounce = False
             
-        if time.monotonic() - prev_time >= 60.0:
-            prev_time = time.monotonic()
-            watchdog_post()
+        #if time.monotonic() - prev_time >= 60.0:
+        #    prev_time = time.monotonic()
+        #    watchdog_post()
         
         time.sleep(0.2)
         
