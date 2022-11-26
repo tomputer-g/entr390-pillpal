@@ -53,7 +53,8 @@ def watchdog_post():
     led(RED)
     time.sleep(0.2)
     led(OFF)    
-    
+
+'''  
 def db_post(url): #Test OK
     response = None
     while not response:
@@ -69,15 +70,12 @@ def db_post(url): #Test OK
                                       please check your router's DNS configuration."
                 ) from error
             continue
-    return response
+    return response'''
 
-def db_post(url):
+def db_post(url): #Posts rounded down to current minute (1:00 - 1:59 --> 1:00)
     response = None
-    timestamp_dat = datetime.fromtimestamp(mktime(ntp.datetime))
-    
-    print(timestamp_dat)
-    print(60000 * (int(int(timestamp_dat) / 60000)))
-    json_data = {"created_at": str(timestamp_dat)}
+    timestamp_dat = datetime(ntp.datetime.tm_year, ntp.datetime.tm_mon, ntp.datetime.tm_mday, ntp.datetime.tm_hour, ntp.datetime.tm_min)
+    json_data = {"entry": str(timestamp_dat)}
     while not response:
         try:
             response = requests.post(url, data=json_data)
@@ -100,7 +98,7 @@ def wifi_init():
     wifi.radio.connect(secrets["ssid"], secrets["password"])
     pool = socketpool.SocketPool(wifi.radio)
     requests = adafruit_requests.Session(pool, ssl.create_default_context())
-    ntp = adafruit_ntp.NTP(pool, tz_offset=-5) #EST + Daylight savings
+    ntp = adafruit_ntp.NTP(pool, tz_offset=0) #EST + Daylight savings
     
 def main():
     debounce = False
@@ -118,7 +116,7 @@ def main():
         if touch.value:
             if not debounce:
                 debounce = True
-                #onPress()
+                onPress()
                 
                 
         else:
@@ -128,14 +126,7 @@ def main():
         #    prev_time = time.monotonic()
         #    watchdog_post()
         
-        #time.sleep(0.2)
-        time.sleep(1)
-        curr = datetime(ntp.datetime.tm_year, ntp.datetime.tm_mon, ntp.datetime.tm_mday, ntp.datetime.tm_hour, ntp.datetime.tm_min)
-        print(str(ntp.datetime), str(curr))
-        
-        
-        #print(str(mktime(ntp.datetime)))
-        #print(1 * (int(int(mktime(ntp.datetime)) / 1)))
+        time.sleep(0.2)
         
 if __name__ == "__main__":
     main()
