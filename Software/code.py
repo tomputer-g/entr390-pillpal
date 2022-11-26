@@ -40,57 +40,43 @@ def led(color):
 
 def onPress():
     led(YELLOW)
-    ret = db_post(secrets["api-post"] + "/default")
+    timestamp_dat = datetime(ntp.datetime.tm_year, ntp.datetime.tm_mon, ntp.datetime.tm_mday, ntp.datetime.tm_hour, ntp.datetime.tm_min)
+    json_data = {"Starting_timestamp": str(timestamp_dat)}
+    print(json_data)
+    ret = db_post(secrets["api-post"] + "/records", json_data)
     print("Press:",ret.text)
     led(GREEN)
     time.sleep(0.2)
     led(OFF)
 
 def watchdog_post():
-    led(YELLOW)
-    ret = db_post(secrets["api-post"] + "/default/1") #???
+    led(PURPLE)
+    timestamp_dat = datetime(ntp.datetime.tm_year, ntp.datetime.tm_mon, ntp.datetime.tm_mday, ntp.datetime.tm_hour, ntp.datetime.tm_min - 1)
+    json_data = {"timestamp_prev": str(timestamp_dat)}
+    print(json_data)
+    ret = db_post(secrets["api-post"] + "/watchdog", json_data)
     print("Watchdog:",ret.text)
-    led(RED)
+    led(GREEN)
     time.sleep(0.2)
-    led(OFF)    
+    led(OFF)
 
-'''  
-def db_post(url): #Test OK
+def db_post(url, json_data):
     response = None
-    while not response:
-        try:
-            response = requests.post(url)
-            failure_count = 0
-        except AssertionError as error:
-            print("Request failed, retrying...\n", error)
-            failure_count += 1
-            if failure_count >= 5:
-                raise AssertionError(
-                    "Failed to resolve hostname, \
-                                      please check your router's DNS configuration."
-                ) from error
-            continue
-    return response'''
-
-def db_post(url): #Posts rounded down to current minute (1:00 - 1:59 --> 1:00)
-    response = None
-    timestamp_dat = datetime(ntp.datetime.tm_year, ntp.datetime.tm_mon, ntp.datetime.tm_mday, ntp.datetime.tm_hour, ntp.datetime.tm_min)
-    json_data = {"entry": str(timestamp_dat)}
     while not response:
         try:
             response = requests.post(url, data=json_data)
-            failure_count = 0
         except AssertionError as error:
-            print("Request failed, retrying...\n", error)
-            failure_count += 1
-            if failure_count >= 5:
-                raise AssertionError(
-                    "Failed to resolve hostname, \
-                                      please check your router's DNS configuration."
-                ) from error
-            continue
+            print("Request failed", error)
+            response = None
+            #failure_count += 1
+            #if failure_count >= 5:
+            #    raise AssertionError(
+            #        "Failed to resolve hostname, \
+            #                          please check your router's DNS configuration."
+            #    ) from error
+            #continue
     return response
-    
+
 def wifi_init():
     # Connect to wifi
     global requests
@@ -99,10 +85,10 @@ def wifi_init():
     pool = socketpool.SocketPool(wifi.radio)
     requests = adafruit_requests.Session(pool, ssl.create_default_context())
     ntp = adafruit_ntp.NTP(pool, tz_offset=0) #EST + Daylight savings
-    
+
 def main():
     debounce = False
-    prev_time = time.monotonic()
+    #prev_time = time.monotonic()
     ### Booting up
     led(BLUE)
 
@@ -117,16 +103,18 @@ def main():
             if not debounce:
                 debounce = True
                 onPress()
-                
-                
+
+
         else:
             debounce = False
-            
+
+        if ntp.datetime.tm_sec == 0:
+            watchdog_post()
+            time.sleep(0.8)
         #if time.monotonic() - prev_time >= 60.0:
         #    prev_time = time.monotonic()
         #    watchdog_post()
-        
-        time.sleep(0.2)
-        
+        time.sleep(0.5)
+
 if __name__ == "__main__":
     main()
