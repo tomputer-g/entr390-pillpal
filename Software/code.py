@@ -67,14 +67,6 @@ def db_post(url, json_data):
             response = requests.post(url, data=json_data)
         except AssertionError as error:
             print("Request failed", error)
-            response = None
-            #failure_count += 1
-            #if failure_count >= 5:
-            #    raise AssertionError(
-            #        "Failed to resolve hostname, \
-            #                          please check your router's DNS configuration."
-            #    ) from error
-            #continue
     return response
 
 def wifi_init():
@@ -88,7 +80,6 @@ def wifi_init():
 
 def main():
     debounce = False
-    #prev_time = time.monotonic()
     ### Booting up
     led(BLUE)
 
@@ -103,17 +94,12 @@ def main():
             if not debounce:
                 debounce = True
                 onPress()
-
-
         else:
             debounce = False
 
         if ntp.datetime.tm_sec == 0:
             watchdog_post()
             time.sleep(0.8)
-        #if time.monotonic() - prev_time >= 60.0:
-        #    prev_time = time.monotonic()
-        #    watchdog_post()
         time.sleep(0.5)
 
 if __name__ == "__main__":
